@@ -53,6 +53,10 @@ func (c *Controller) Start(kubeConfig *rest.Config) error {
 
 	go c.serviceInformer.Run(c.stopCh)
 
+	if ok := cache.WaitForCacheSync(c.stopCh, c.serviceInformer.HasSynced); !ok {
+		return fmt.Errorf("failed to wait for informer cache to sync")
+	}
+
 	return nil
 }
 
