@@ -11,7 +11,7 @@ require (
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.11.0
 	github.com/submariner-io/admiral v0.9.0-rc0.0.20210506112321-7cecd38836bf
 	github.com/submariner-io/shipyard v0.9.1-0.20210506112346-25ace6c97da9
 	go.uber.org/zap v1.15.0 // indirect
