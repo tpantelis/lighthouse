@@ -88,7 +88,7 @@ var _ = Describe("[discovery] Test Service Discovery Across Clusters", func() {
 		var healthCheckIP, endpointName string
 
 		BeforeEach(func() {
-			if len(framework.TestContext.ClusterIDs) < 3 {
+			if len(framework.TestContext.ClusterIDs) < 10 {
 				Skip("Only two clusters are deployed and hence skipping the test")
 				return
 			}
@@ -109,7 +109,9 @@ var _ = Describe("[discovery] Test Service Discovery Across Clusters", func() {
 		})
 
 		AfterEach(func() {
-			f.SetHealthCheckIP(framework.ClusterC, healthCheckIP, endpointName)
+			if endpointName != "" {
+				f.SetHealthCheckIP(framework.ClusterC, healthCheckIP, endpointName)
+			}
 		})
 	})
 })
