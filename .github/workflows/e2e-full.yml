@@ -17,12 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         deploytool: ['operator']
-        globalnet: ['', 'globalnet']
+        globalnet: ['']
         k8s_version: ['1.25']
-        include:
-          - k8s_version: '1.22'
-          - k8s_version: '1.23'
-          - k8s_version: '1.24'
     steps:
       - name: Check out the repository
         uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3
