@@ -30,6 +30,7 @@ import (
 	lhframework "github.com/submariner-io/lighthouse/test/e2e/framework"
 	"github.com/submariner-io/shipyard/test/e2e/framework"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -160,6 +161,19 @@ func RunServiceDiscoveryTest(f *lhframework.Framework) {
 		true, false)
 	verifySRVWithDig(f.Framework, framework.ClusterA, nginxServiceClusterB, netshootPodList, checkedDomains, "",
 		false, false)
+
+	By(fmt.Sprintf("Re-creating Nginx Service on %q", clusterBName))
+
+	nginxServiceClusterB.ObjectMeta = metav1.ObjectMeta{
+		Name:   nginxServiceClusterB.Name,
+		Labels: nginxServiceClusterB.Labels,
+	}
+	nginxServiceClusterB = f.CreateService(framework.KubeClients[framework.ClusterB].CoreV1().Services(f.Namespace), nginxServiceClusterB)
+	nginxServiceClusterB, err = f.GetService(framework.ClusterB, nginxServiceClusterB.Name, nginxServiceClusterB.Namespace)
+	Expect(err).NotTo(HaveOccurred())
+
+	f.VerifyServiceIPWithDig(framework.ClusterA, framework.ClusterB, nginxServiceClusterB, netshootPodList, checkedDomains,
+		"", true)
 }
 
 func RunServiceDiscoveryLocalTest(f *lhframework.Framework) {
