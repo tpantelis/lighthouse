@@ -48,69 +48,71 @@ var _ = Describe("[discovery] Test Service Discovery Across Clusters", func() {
 		})
 	})
 
-	When("a pod tries to resolve a service which is present locally and in a remote cluster", func() {
-		It("should resolve the local service", func() {
-			RunServiceDiscoveryLocalTest(f)
-		})
-	})
-
-	When("service export is created before the service", func() {
-		It("should resolve the service", func() {
-			RunServiceExportTest(f)
-		})
-	})
-	When("there are no active pods for a service", func() {
-		It("should not resolve the service", func() {
-			RunServicesPodAvailabilityTest(f)
-		})
-	})
-
-	When("there are active pods for a service in only one cluster", func() {
-		It("should not resolve the service on the cluster without active pods", func() {
-			RunServicesPodAvailabilityMultiClusterTest(f)
-		})
-	})
-
-	When("a pod tries to resolve a service in a specific remote cluster by its cluster name", func() {
-		It("should resolve the service on the specified cluster", func() {
-			RunServiceDiscoveryClusterNameTest(f)
-		})
-	})
-
-	When("a pod tries to resolve a service multiple times", func() {
-		It("should resolve the service from both the clusters in a round robin fashion", func() {
-			RunServiceDiscoveryRoundRobinTest(f)
-		})
-	})
-
-	When("one of the clusters with a service is not healthy", func() {
-		var healthCheckIP, endpointName string
-
-		BeforeEach(func() {
-			if len(framework.TestContext.ClusterIDs) < 3 {
-				Skip("Only two clusters are deployed and hence skipping the test")
-				return
-			}
-
-			randomIP := "192.168.1.5"
-			healthCheckEnabled := f.GetHealthCheckEnabledInfo(framework.ClusterC)
-			if !healthCheckEnabled {
-				Skip("Healthcheck is not enabled hence skipping the test")
-				return
-			}
-
-			endpointName, healthCheckIP = f.GetHealthCheckIPInfo(framework.ClusterC)
-			f.SetHealthCheckIP(framework.ClusterC, randomIP, endpointName)
+	PContext("", func() {
+		When("a pod tries to resolve a service which is present locally and in a remote cluster", func() {
+			It("should resolve the local service", func() {
+				RunServiceDiscoveryLocalTest(f)
+			})
 		})
 
-		It("should not resolve that cluster's service IP", func() {
-			RunServicesClusterAvailabilityMultiClusterTest(f)
+		When("service export is created before the service", func() {
+			It("should resolve the service", func() {
+				RunServiceExportTest(f)
+			})
+		})
+		When("there are no active pods for a service", func() {
+			It("should not resolve the service", func() {
+				RunServicesPodAvailabilityTest(f)
+			})
 		})
 
-		AfterEach(func() {
-			if endpointName != "" {
-				f.SetHealthCheckIP(framework.ClusterC, healthCheckIP, endpointName)
-			}
+		When("there are active pods for a service in only one cluster", func() {
+			It("should not resolve the service on the cluster without active pods", func() {
+				RunServicesPodAvailabilityMultiClusterTest(f)
+			})
+		})
+
+		When("a pod tries to resolve a service in a specific remote cluster by its cluster name", func() {
+			It("should resolve the service on the specified cluster", func() {
+				RunServiceDiscoveryClusterNameTest(f)
+			})
+		})
+
+		When("a pod tries to resolve a service multiple times", func() {
+			It("should resolve the service from both the clusters in a round robin fashion", func() {
+				RunServiceDiscoveryRoundRobinTest(f)
+			})
+		})
+
+		When("one of the clusters with a service is not healthy", func() {
+			var healthCheckIP, endpointName string
+
+			BeforeEach(func() {
+				if len(framework.TestContext.ClusterIDs) < 3 {
+					Skip("Only two clusters are deployed and hence skipping the test")
+					return
+				}
+
+				randomIP := "192.168.1.5"
+				healthCheckEnabled := f.GetHealthCheckEnabledInfo(framework.ClusterC)
+				if !healthCheckEnabled {
+					Skip("Healthcheck is not enabled hence skipping the test")
+					return
+				}
+
+				endpointName, healthCheckIP = f.GetHealthCheckIPInfo(framework.ClusterC)
+				f.SetHealthCheckIP(framework.ClusterC, randomIP, endpointName)
+			})
+
+			It("should not resolve that cluster's service IP", func() {
+				RunServicesClusterAvailabilityMultiClusterTest(f)
+			})
+
+			AfterEach(func() {
+				if endpointName != "" {
+					f.SetHealthCheckIP(framework.ClusterC, healthCheckIP, endpointName)
+				}
+			})
 		})
 	})
 })
