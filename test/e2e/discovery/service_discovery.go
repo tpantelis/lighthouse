@@ -45,6 +45,7 @@ var _ = Describe("Test Service Discovery Across Clusters", Label(TestLabel), fun
 	When("a pod tries to resolve a service in a remote cluster", func() {
 		It("should be able to discover the remote service successfully", func() {
 			RunServiceDiscoveryTest(f)
+			Fail("on purpose")
 		})
 	})
 
