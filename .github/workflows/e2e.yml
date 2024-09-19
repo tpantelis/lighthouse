@@ -68,3 +68,34 @@ jobs:
       - name: Post mortem
         if: failure()
         uses: submariner-io/shipyard/gh-actions/post-mortem@devel
+  conformance-test:
+    name: MCS Conformance
+    needs: images
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Check out the mcs-api repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+        with:
+          ref: ccc5d8474f4a8502e2a02c83aefc97e96d78655d
+          repository: kubernetes-sigs/mcs-api
+          path: mcs-api
+
+      - name: Deploy Submariner
+        shell: bash
+        run: |
+          make deploy
+
+      - name: Run conformance tests
+        shell: bash
+        run: |
+          export KUBECONFIG=$(find $(git rev-parse --show-toplevel)/output/kubeconfigs/ -type f -printf %p:)
+          cd mcs-api/conformance
+          go test -v -timeout 30m -contexts cluster1,cluster2 -args -test.timeout 15m --ginkgo.v --ginkgo.trace
+
+      - name: Post mortem
+        if: failure()
+        uses: submariner-io/shipyard/gh-actions/post-mortem@devel
