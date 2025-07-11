@@ -156,12 +156,23 @@ func (c *ServiceEndpointSliceController) cleanup(ctx context.Context) (bool, err
 		return false, nil
 	}
 
+	logger.Infof("*****EPS cleanup for %s/%s found %d", c.serviceNamespace, c.serviceName, len(list.Items))
+
 	err = c.localClient.DeleteCollection(ctx, metav1.DeleteOptions{}, listOptions)
 
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, errors.Wrapf(err, "error deleting the EndpointSlices associated with service %s/%s",
 			c.serviceNamespace, c.serviceName)
 	}
+
+	list, _ = c.localClient.List(ctx, metav1.ListOptions{
+		LabelSelector: k8slabels.SelectorFromSet(map[string]string{
+			discovery.LabelManagedBy: constants.LabelValueManagedBy,
+		}).String(),
+	})
+
+	logger.Infof("*****EPS cleanup AFTER for %s/%s found %d:", c.serviceNamespace, c.serviceName,
+		len(list.Items), resource.ToJSON(list.Items))
 
 	return true, nil
 }

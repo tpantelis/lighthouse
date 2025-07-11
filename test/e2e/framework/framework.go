@@ -83,11 +83,11 @@ func NewFramework(baseName string) *Framework {
 	BeforeEach(f.BeforeEach)
 
 	AfterEach(func() {
-		namespace := f.Namespace
+		//namespace := f.Namespace
 		f.AfterEach()
 
-		f.AwaitEndpointSlices(framework.ClusterB, "", namespace, 0, 0)
-		f.AwaitEndpointSlices(framework.ClusterA, "", namespace, 0, 0)
+		//f.AwaitEndpointSlices(framework.ClusterB, "", namespace, 0, 0)
+		//f.AwaitEndpointSlices(framework.ClusterA, "", namespace, 0, 0)
 	})
 
 	return f
@@ -567,11 +567,20 @@ func (f *Framework) AwaitEndpointSlices(targetCluster framework.ClusterIndex, na
 	framework.By(fmt.Sprintf("Retrieving EndpointSlices for %q in ns %q on %q", name, namespace,
 		framework.TestContext.ClusterIDs[targetCluster]))
 	framework.AwaitUntil("retrieve EndpointSlices", func() (interface{}, error) {
+		//if name == "" {
+		//	framework.By("***Listing EndpointSlices")
+		//	l, e := ep.List(context.TODO(), listOptions)
+		//	framework.By("***DONE Listing EndpointSlices")
+		//	return l, e
+		//}
+
 		return ep.List(context.TODO(), listOptions)
 	}, func(result interface{}) (bool, string, error) {
 		endpointSliceList = result.(*discovery.EndpointSliceList)
 		sliceCount := 0
 		readyCount := 0
+
+		var notFound []any
 
 		for i := range endpointSliceList.Items {
 			es := &endpointSliceList.Items[i]
@@ -583,15 +592,30 @@ func (f *Framework) AwaitEndpointSlices(targetCluster framework.ClusterIndex, na
 						readyCount++
 					}
 				}
+			} else {
+				notFound = append(notFound, &es.ObjectMeta)
 			}
 		}
 
 		if expSliceCount != anyCount && sliceCount != expSliceCount {
+			if name == "" {
+				framework.By(fmt.Sprintf("***Check EndpointSlices: %s",
+					fmt.Sprintf("%d EndpointSlices found when expected %d: %s", sliceCount, expSliceCount,
+						resource.ToJSON(notFound))))
+			}
 			return false, fmt.Sprintf("%d EndpointSlices found when expected %d", sliceCount, expSliceCount), nil
 		}
 
 		if expReadyCount != anyCount && readyCount != expReadyCount {
+			if name == "" {
+				framework.By(fmt.Sprintf("***Check EndpointSlices: %s",
+					fmt.Sprintf("%d ready Endpoints found when expected %d", readyCount, expReadyCount)))
+			}
 			return false, fmt.Sprintf("%d ready Endpoints found when expected %d", readyCount, expReadyCount), nil
+		}
+
+		if name == "" {
+			framework.By("***Check EndpointSlices DONE")
 		}
 
 		return true, "", nil
