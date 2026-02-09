@@ -408,7 +408,7 @@ func (a *Controller) getPortsForService(service *corev1.Service) []mcsv1a1.Servi
 }
 
 func (a *Controller) getObjectNameWithClusterID(name, namespace string) string {
-	return name + "-" + namespace + "-" + a.clusterID
+	return fmt.Sprintf("%s-%s-%s", name, namespace, a.clusterID)
 }
 
 func (a *Controller) getIngressIP(name, namespace string) *IngressIP {
