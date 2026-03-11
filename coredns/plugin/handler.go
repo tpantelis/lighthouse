@@ -26,7 +26,6 @@ import (
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
-	"github.com/submariner-io/admiral/pkg/log"
 	k8snet "k8s.io/utils/net"
 )
 
@@ -37,19 +36,19 @@ func (lh *Lighthouse) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns
 	state := &request.Request{W: w, Req: r}
 	qname := state.QName()
 
-	logger.V(log.DEBUG).Infof("Request received for %q, type: %v", qname, dns.Type(state.QType()).String())
+	logger.Infof("Request received for %q, type: %v", qname, dns.Type(state.QType()).String())
 
 	// qname: mysvc.default.svc.example.org.
 	// zone:  example.org.
 	// Matches will return zone in all lower cases
 	zone := plugin.Zones(lh.Zones).Matches(qname)
 	if zone == "" {
-		logger.V(log.DEBUG).Infof("Request does not match configured zones %v", lh.Zones)
+		logger.Infof("Request does not match configured zones %v", lh.Zones)
 		return lh.nextOrFailure(ctx, state, r, dns.RcodeNotZone)
 	}
 
 	if state.QType() != dns.TypeA && state.QType() != dns.TypeAAAA && state.QType() != dns.TypeSRV {
-		logger.V(log.DEBUG).Infof("Query of type %d is not supported", state.QType())
+		logger.Infof("Query of type %d is not supported", state.QType())
 
 		return lh.nextOrFailure(ctx, state, r, dns.RcodeNotImplemented)
 	}
@@ -60,7 +59,7 @@ func (lh *Lighthouse) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns
 	pReq, pErr := parseRequest(state)
 	if pErr != nil || pReq.podOrSvc != Svc {
 		// We only support svc type queries i.e. *.svc.*
-		logger.V(log.DEBUG).Infof("Request type %q is not a 'svc' type query - err was %v", pReq.podOrSvc, pErr)
+		logger.Infof("Request type %q is not a 'svc' type query - err was %v", pReq.podOrSvc, pErr)
 		return lh.nextOrFailure(ctx, state, r, dns.RcodeNameError)
 	}
 
@@ -77,18 +76,25 @@ func (lh *Lighthouse) getDNSRecord(ctx context.Context, zone string, state *requ
 	}
 
 	if ipFamily != k8snet.IPFamilyUnknown && !slices.Contains(lh.SupportedIPFamilies, ipFamily) {
-		logger.V(log.DEBUG).Infof("IPv%s records not supported", ipFamily)
+		logger.Infof("IPv%s records not supported", ipFamily)
 		return lh.emptyResponse(state)
 	}
 
 	dnsRecords, isHeadless, found := lh.Resolver.GetDNSRecords(pReq.namespace, pReq.service, pReq.cluster, pReq.hostname, ipFamily)
+
+	logger.Infof("GetDNSRecords(namespace=%s, service=%s, cluster=%s, hostname=%s, ipFamily=%v) returned %d records, isHeadless=%v, found=%v",
+		pReq.namespace, pReq.service, pReq.cluster, pReq.hostname, ipFamily, len(dnsRecords), isHeadless, found)
+	for i, rec := range dnsRecords {
+		logger.Infof("  Record[%d]: IP=%s, ClusterName=%s, HostName=%s, Ports=%v", i, rec.IP, rec.ClusterName, rec.HostName, rec.Ports)
+	}
+
 	if !found {
-		logger.V(log.DEBUG).Infof("No record found for %q", state.QName())
+		logger.Infof("No record found for %q", state.QName())
 		return lh.nextOrFailure(ctx, state, r, dns.RcodeNameError)
 	}
 
 	if len(dnsRecords) == 0 {
-		logger.V(log.DEBUG).Infof("Couldn't find a connected cluster or valid IPs for %q", state.QName())
+		logger.Infof("Couldn't find a connected cluster or valid IPs for %q", state.QName())
 		return lh.emptyResponse(state)
 	}
 
@@ -110,17 +116,17 @@ func (lh *Lighthouse) getDNSRecord(ctx context.Context, zone string, state *requ
 	}
 
 	if len(records) == 0 {
-		logger.V(log.DEBUG).Infof("Couldn't find a connected cluster or valid record for %q", state.QName())
+		logger.Infof("Couldn't find a connected cluster or valid record for %q", state.QName())
 		return lh.emptyResponse(state)
 	}
 
-	logger.V(log.TRACE).Infof("rr is %v", records)
+	logger.Infof("rr is %v", records)
 
 	a := new(dns.Msg)
 	a.SetReply(r)
 	a.Answer = append(a.Answer, records...)
 
-	logger.V(log.DEBUG).Infof("Responding to query with '%s'", a.Answer)
+	logger.Infof("Responding to query with '%s'", a.Answer)
 
 	return lh.writeResponse(state, a)
 }

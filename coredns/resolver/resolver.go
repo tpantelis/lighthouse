@@ -36,14 +36,21 @@ func (i *Interface) GetDNSRecords(namespace, name, clusterID, hostname string, i
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
 
+	logger.Infof("GetDNSRecords called: namespace=%s, name=%s, clusterID=%s, hostname=%s, ipFamily=%v", namespace, name, clusterID, hostname, ipFamily)
+
 	serviceInfo, found := i.serviceMap[keyFunc(namespace, name)]
 	if !found {
+		logger.Infof("Service not found in serviceMap")
 		return nil, false, false
 	}
+
+	logger.Infof("Service found, isHeadless=%v, ipv4Info.clusters=%v, ipv6Info.clusters=%v",
+		serviceInfo.isHeadless(), len(serviceInfo.ipv4Info.clusters), len(serviceInfo.ipv6Info.clusters))
 
 	if serviceInfo.isHeadless() {
 		records, found := i.getHeadlessRecords(serviceInfo, ipFamily, clusterID, hostname)
 
+		logger.Infof("getHeadlessRecords returned %d records, found=%v", len(records), found)
 		return records, true, found
 	}
 
@@ -114,16 +121,24 @@ func (i *Interface) getHeadlessRecords(serviceInfo *serviceInfo, ipFamily k8snet
 		found   bool
 	)
 
+	logger.Infof("getHeadlessRecords: ipFamily=%v, clusterID=%s, hostname=%s", ipFamily, clusterID, hostname)
+
 	if ipFamily == k8snet.IPv4 {
 		records, found = i.getHeadlessRecordsForIPFamily(&serviceInfo.ipv4Info, clusterID, hostname)
+		logger.Infof("IPv4 only: returned %d records", len(records))
 	} else if ipFamily == k8snet.IPv6 {
 		records, found = i.getHeadlessRecordsForIPFamily(&serviceInfo.ipv6Info, clusterID, hostname)
+		logger.Infof("IPv6 only: returned %d records", len(records))
 	} else {
-		for _, ipFamilyInfo := range []*IPFamilyInfo{&serviceInfo.ipv4Info, &serviceInfo.ipv6Info} {
+		logger.Infof("IPFamilyUnknown - will iterate both IPv4 and IPv6")
+		for idx, ipFamilyInfo := range []*IPFamilyInfo{&serviceInfo.ipv4Info, &serviceInfo.ipv6Info} {
+			logger.Infof("  Processing IP family %d (addrType=%v), clusters=%v", idx, ipFamilyInfo.addrType, len(ipFamilyInfo.clusters))
 			r, f := i.getHeadlessRecordsForIPFamily(ipFamilyInfo, clusterID, hostname)
+			logger.Infof("  IP family %d returned %d records, found=%v", idx, len(r), f)
 			records = append(records, r...)
 			found = found || f
 		}
+		logger.Infof("Total records after both families: %d", len(records))
 	}
 
 	return records, found
@@ -131,6 +146,9 @@ func (i *Interface) getHeadlessRecords(serviceInfo *serviceInfo, ipFamily k8snet
 
 func (i *Interface) getHeadlessRecordsForIPFamily(ipFamilyInfo *IPFamilyInfo, clusterID, hostname string) ([]DNSRecord, bool) {
 	clusterInfo, clusterFound := ipFamilyInfo.clusters[clusterID]
+
+	logger.Infof("getHeadlessRecordsForIPFamily: addrType=%v, clusterID=%s, hostname=%s, clusterFound=%v",
+		ipFamilyInfo.addrType, clusterID, hostname, clusterFound)
 
 	switch {
 	case clusterID == "":
@@ -140,14 +158,19 @@ func (i *Interface) getHeadlessRecordsForIPFamily(ipFamilyInfo *IPFamilyInfo, cl
 			totalCapacity += len(info.endpointRecords)
 		}
 
+		logger.Infof("  clusterID empty, total clusters=%d, totalCapacity=%d", len(ipFamilyInfo.clusters), totalCapacity)
+
 		records := make([]DNSRecord, 0, totalCapacity)
 
 		for id, info := range ipFamilyInfo.clusters {
-			if i.clusterStatus.IsConnected(id, ipFamilyInfo.getNetIPFamily()) {
+			isConnected := i.clusterStatus.IsConnected(id, ipFamilyInfo.getNetIPFamily())
+			logger.Infof("  Cluster %s: isConnected=%v, endpointRecords=%d", id, isConnected, len(info.endpointRecords))
+			if isConnected {
 				records = append(records, info.endpointRecords...)
 			}
 		}
 
+		logger.Infof("  Returning %d records for addrType=%v", len(records), ipFamilyInfo.addrType)
 		return records, true
 	case !clusterFound:
 		return nil, false

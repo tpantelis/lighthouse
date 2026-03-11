@@ -120,6 +120,9 @@ func lighthouseParse(c *caddy.Controller) (*Lighthouse, error) {
 		SupportedIPFamilies: determineSupportedAddressTypes(),
 	}
 
+	// Enable verbose logging for debugging
+	logger.SetMaxVerbosity(4)
+
 	resolverController := resolver.NewController(lh.Resolver)
 
 	stopCh := make(chan struct{})
@@ -167,6 +170,7 @@ func determineSupportedAddressTypes() []k8snet.IPFamily {
 
 	cidrEnvVar := os.Getenv("SUBMARINER_CLUSTERCIDR")
 
+	logger.Infof("*********NEW LOG*******************")
 	logger.Infof("SUBMARINER_CLUSTERCIDR env: %q", cidrEnvVar)
 
 	for cidr := range strings.SplitSeq(cidrEnvVar, ",") {
